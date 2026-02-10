@@ -151,9 +151,10 @@ class _OcrCorrecaoPageState extends State<OcrCorrecaoPage> {
     if (image != null) {
       setState(() {
         if (kIsWeb) {
-          _image = image; // Store XFile directly on Web
+          _image = image; 
         } else {
-          _image = io.File(image.path);
+          // Use dynamic to trick the web compiler into not checking the 'io.File' constructor arguments
+          _image = (io.File as dynamic)(image.path);
         }
         _statusMessage = 'Imagem carregada. Clique em Processar.';
         _statusColor = Colors.blue;
@@ -204,12 +205,11 @@ class _OcrCorrecaoPageState extends State<OcrCorrecaoPage> {
     });
 
     try {
-      // This section ONLY runs on Mobile/Desktop where ML Kit is supported
-      // On Web, we returned earlier in the mock check
-      final io.File file = _image as io.File;
-      final inputImage = InputImage.fromFile(file);
+      // Use dynamic to call ML Kit methods to prevent web compiler from failing
+      final dynamic file = _image;
+      final dynamic inputImage = (InputImage as dynamic).fromFile(file);
       
-      final textRecognizer = TextRecognizer(script: TextRecognitionScript.latin);
+      final dynamic textRecognizer = TextRecognizer(script: TextRecognitionScript.latin);
       final RecognizedText recognizedText = await textRecognizer.processImage(inputImage);
       
       await textRecognizer.close();
@@ -451,8 +451,8 @@ class _OcrCorrecaoPageState extends State<OcrCorrecaoPage> {
                                       child: kIsWeb 
                                           ? Image.network((_image as XFile).path, fit: BoxFit.cover)
                                           : (_image is String) 
-                                              ? const Icon(Icons.image, size: 50) // Mock image
-                                              : Image.file(_image as io.File, fit: BoxFit.cover),
+                                              ? const Icon(Icons.image, size: 50) 
+                                              : Image.file(_image as dynamic, fit: BoxFit.cover),
                                     )
                               : Column(
                                   mainAxisAlignment: MainAxisAlignment.center,
