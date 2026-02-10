@@ -1,6 +1,5 @@
 import 'package:flutter/foundation.dart';
-// import 'dart:io' conditionally to avoid web issues
-import 'dart:io' if (dart.library.html) 'dart:html' as io; 
+import 'dart:io' as io; // Safe to import in Flutter Web if not used at runtime
 
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
@@ -152,7 +151,7 @@ class _OcrCorrecaoPageState extends State<OcrCorrecaoPage> {
     if (image != null) {
       setState(() {
         if (kIsWeb) {
-          _image = image; // On Web, XFile is safe
+          _image = image; // Store XFile directly on Web
         } else {
           _image = io.File(image.path);
         }
@@ -205,8 +204,11 @@ class _OcrCorrecaoPageState extends State<OcrCorrecaoPage> {
     });
 
     try {
-      final inputImage = InputImage.fromFile(_image as io.File);
-
+      // This section ONLY runs on Mobile/Desktop where ML Kit is supported
+      // On Web, we returned earlier in the mock check
+      final io.File file = _image as io.File;
+      final inputImage = InputImage.fromFile(file);
+      
       final textRecognizer = TextRecognizer(script: TextRecognitionScript.latin);
       final RecognizedText recognizedText = await textRecognizer.processImage(inputImage);
       
