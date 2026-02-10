@@ -12,26 +12,37 @@ class _TurmasPageState extends State<TurmasPage> {
   final _supabase = Supabase.instance.client;
   final _nomeController = TextEditingController();
   int? _selectedEscolaId;
+  List<Map<String, dynamic>> _turmas = [];
   List<Map<String, dynamic>> _escolas = [];
-  bool _isLoading = false;
+  bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
-    _loadEscolas();
+    _loadData();
   }
 
-  Future<void> _loadEscolas() async {
-    final response = await _supabase.from('escolas').select().order('nome');
-    setState(() {
-      _escolas = List<Map<String, dynamic>>.from(response);
-    });
+  Future<void> _loadData() async {
+    setState(() => _isLoading = true);
+    try {
+      final escRes = await _supabase.from('escolas').select().order('nome');
+      final turRes = await _supabase.from('turmas').select().order('nome');
+      setState(() {
+        _escolas = List<Map<String, dynamic>>.from(escRes);
+        _turmas = List<Map<String, dynamic>>.from(turRes);
+      });
+    } catch (e) {
+      _showError('Erro ao carregar dados: $e');
+    } finally {
+      setState(() => _isLoading = false);
+    }
   }
 
   Future<void> _addTurma() async {
-    if (_nomeController.text.isEmpty || _selectedEscolaId == null) return;
-    
-    setState(() => _isLoading = true);
+    if (_nomeController.text.isEmpty || _selectedEscolaId == null) {
+      _showError('Preencha o nome e selecione uma escola');
+      return;
+    }
     try {
       await _supabase.from('turmas').insert({
         'nome': _nomeController.text,
@@ -39,18 +50,17 @@ class _TurmasPageState extends State<TurmasPage> {
       });
       _nomeController.clear();
       if (mounted) Navigator.pop(context);
+      _loadData();
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Erro ao adicionar: $e'), backgroundColor: Colors.red),
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
+      _showError('Erro ao adicionar: $e');
     }
   }
 
   void _showAddDialog() {
+    if (_escolas.isEmpty) {
+      _showError('Cadastre uma escola antes de criar turmas!');
+      return;
+    }
     showDialog(
       context: context,
       builder: (context) => StatefulBuilder(
@@ -61,12 +71,12 @@ class _TurmasPageState extends State<TurmasPage> {
             children: [
               TextField(
                 controller: _nomeController,
-                decoration: const InputDecoration(labelText: 'Nome da Turma'),
+                decoration: const InputDecoration(labelText: 'Nome da Turma', border: OutlineInputBorder()),
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: 15),
               DropdownButtonFormField<int>(
                 value: _selectedEscolaId,
-                decoration: const InputDecoration(labelText: 'Escola'),
+                decoration: const InputDecoration(labelText: 'Escola Responsável', border: OutlineInputBorder()),
                 items: _escolas.map((e) => DropdownMenuItem<int>(
                   value: e['id'],
                   child: Text(e['nome']),
@@ -84,49 +94,65 @@ class _TurmasPageState extends State<TurmasPage> {
     );
   }
 
-  Stream<List<Map<String, dynamic>>> _fetchTurmas() {
-    // Note: Stream in supabase_flutter doesn't easily join tables. 
-    // For a simple app, we'll use a FutureBuilder or a periodic refresh, or just show IDs for now.
-    // Better: use select().stream() and handle it.
-    return _supabase.from('turmas').stream(primaryKey: ['id']).order('nome');
+  void _showError(String msg) {
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg), backgroundColor: Colors.red));
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: StreamBuilder<List<Map<String, dynamic>>>(
-        stream: _fetchTurmas(),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          final turmas = snapshot.data ?? [];
-          return ListView.builder(
-            itemCount: turmas.length,
-            itemBuilder: (context, index) {
-              final turma = turmas[index];
-              final escola = _escolas.firstWhere((e) => e['id'] == turma['escola_id'], orElse: () => {'nome': 'N/A'});
-              return Card(
-                margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                child: ListTile(
-                  title: Text(turma['nome'], style: const TextStyle(fontWeight: FontWeight.bold)),
-                  subtitle: Text('Escola: ${escola['nome']}'),
-                  leading: const Icon(Icons.group, color: Colors.green),
-                  trailing: IconButton(
-                    icon: const Icon(Icons.delete, color: Colors.red),
-                    onPressed: () async {
-                      await _supabase.from('turmas').delete().eq('id', turma['id']);
-                    },
+      body: _isLoading 
+        ? const Center(child: CircularProgressIndicator())
+        : RefreshIndicator(
+            onRefresh: _loadData,
+            child: _turmas.isEmpty 
+              ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.group_outlined, size: 80, color: Colors.grey),
+                      const SizedBox(height: 16),
+                      const Text('Nenhuma turma cadastrada', style: TextStyle(fontSize: 18, color: Colors.grey)),
+                      const SizedBox(height: 24),
+                      ElevatedButton.icon(
+                        onPressed: _showAddDialog, 
+                        icon: const Icon(Icons.add), 
+                        label: const Text('CADASTRAR PRIMEIRA TURMA'),
+                      )
+                    ],
                   ),
+                )
+              : ListView.builder(
+                  padding: const EdgeInsets.all(8),
+                  itemCount: _turmas.length,
+                  itemBuilder: (context, index) {
+                    final turma = _turmas[index];
+                    final escola = _escolas.firstWhere((e) => e['id'] == turma['escola_id'], orElse: () => {'nome': 'N/A'});
+                    return Card(
+                      child: ListTile(
+                        leading: const CircleAvatar(backgroundColor: Colors.green, child: Icon(Icons.group, color: Colors.white)),
+                        title: Text(turma['nome'], style: const TextStyle(fontWeight: FontWeight.bold)),
+                        subtitle: Text('Escola: ${escola['nome']}'),
+                        trailing: IconButton(
+                          icon: const Icon(Icons.delete, color: Colors.red),
+                          onPressed: () async {
+                            await _supabase.from('turmas').delete().eq('id', turma['id']);
+                            _loadData();
+                          },
+                        ),
+                      ),
+                    );
+                  },
                 ),
-              );
-            },
-          );
-        },
-      ),
-      floatingActionButton: FloatingActionButton(
+          ),
+      floatingActionButton: FloatingActionButton.extended(
         onPressed: _showAddDialog,
-        child: const Icon(Icons.add),
+        label: const Text('NOVA TURMA'),
+        icon: const Icon(Icons.add),
+        backgroundColor: Colors.green,
+        foregroundColor: Colors.white,
       ),
     );
   }

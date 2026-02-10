@@ -1,5 +1,7 @@
-import 'dart:io';
-import 'package:flutter/foundation.dart'; // For KIsWeb
+import 'package:flutter/foundation.dart';
+// import 'dart:io' conditionally to avoid web issues
+import 'dart:io' if (dart.library.html) 'dart:html' as io; 
+
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
@@ -18,7 +20,8 @@ class OcrCorrecaoPage extends StatefulWidget {
 
 class _OcrCorrecaoPageState extends State<OcrCorrecaoPage> {
   final _supabase = Supabase.instance.client;
-  File? _image;
+  dynamic _image; // Use dynamic to avoid File/XFile type conflict on Web
+
   String _statusMessage = '';
   Color _statusColor = Colors.blue;
   bool _processando = false;
@@ -134,11 +137,10 @@ class _OcrCorrecaoPageState extends State<OcrCorrecaoPage> {
   }
 
   Future<void> _pickImage(ImageSource source) async {
-    // MOCK FOR DESKTOP - Avoid crash since ImagePicker may not support Windows
-    if (kIsWeb || Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
+    if (kIsWeb || (defaultTargetPlatform == TargetPlatform.windows || defaultTargetPlatform == TargetPlatform.linux || defaultTargetPlatform == TargetPlatform.macOS)) {
        setState(() {
-         // Use a dummy file path - logic ignores content anyway in mock mode
-         if (!kIsWeb) _image = File('mock_image.png');
+         // Use a dummy string for image identifier on web/desktop mock
+         _image = 'mock_image'; 
          _statusMessage = '[MOCK] Imagem simulada. Clique em Processar.';
          _statusColor = Colors.blue;
        });
@@ -149,7 +151,11 @@ class _OcrCorrecaoPageState extends State<OcrCorrecaoPage> {
     final XFile? image = await picker.pickImage(source: source);
     if (image != null) {
       setState(() {
-        _image = File(image.path);
+        if (kIsWeb) {
+          _image = image; // On Web, XFile is safe
+        } else {
+          _image = io.File(image.path);
+        }
         _statusMessage = 'Imagem carregada. Clique em Processar.';
         _statusColor = Colors.blue;
       });
@@ -158,7 +164,7 @@ class _OcrCorrecaoPageState extends State<OcrCorrecaoPage> {
 
   Future<void> _processarImagem() async {
     // MOCK FOR DESKTOP OCR - Avoid ML Kit UnimplementedError
-    if (kIsWeb || Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
+    if (kIsWeb || (defaultTargetPlatform == TargetPlatform.windows || defaultTargetPlatform == TargetPlatform.linux || defaultTargetPlatform == TargetPlatform.macOS)) {
        setState(() {
           _processando = true;
           _statusMessage = '[MOCK] Simulando OCR...';
@@ -199,7 +205,8 @@ class _OcrCorrecaoPageState extends State<OcrCorrecaoPage> {
     });
 
     try {
-      final inputImage = InputImage.fromFile(_image!);
+      final inputImage = InputImage.fromFile(_image as io.File);
+
       final textRecognizer = TextRecognizer(script: TextRecognitionScript.latin);
       final RecognizedText recognizedText = await textRecognizer.processImage(inputImage);
       
@@ -437,10 +444,14 @@ class _OcrCorrecaoPageState extends State<OcrCorrecaoPage> {
                             border: Border.all(color: Colors.grey[300]!),
                           ),
                           child: _image != null
-                              ? ClipRRect(
-                                  borderRadius: BorderRadius.circular(8),
-                                  child: Image.file(_image!, fit: BoxFit.cover),
-                                )
+                                  ? ClipRRect(
+                                      borderRadius: BorderRadius.circular(8),
+                                      child: kIsWeb 
+                                          ? Image.network((_image as XFile).path, fit: BoxFit.cover)
+                                          : (_image is String) 
+                                              ? const Icon(Icons.image, size: 50) // Mock image
+                                              : Image.file(_image as io.File, fit: BoxFit.cover),
+                                    )
                               : Column(
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: const [

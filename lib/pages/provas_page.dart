@@ -13,26 +13,37 @@ class _ProvasPageState extends State<ProvasPage> {
   final _supabase = Supabase.instance.client;
   final _tituloController = TextEditingController();
   int? _selectedTurmaId;
+  List<Map<String, dynamic>> _provas = [];
   List<Map<String, dynamic>> _turmas = [];
-  bool _isLoading = false;
+  bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
-    _loadTurmas();
+    _loadData();
   }
 
-  Future<void> _loadTurmas() async {
-    final response = await _supabase.from('turmas').select().order('nome');
-    setState(() {
-      _turmas = List<Map<String, dynamic>>.from(response);
-    });
+  Future<void> _loadData() async {
+    setState(() => _isLoading = true);
+    try {
+      final turRes = await _supabase.from('turmas').select().order('nome');
+      final proRes = await _supabase.from('provas').select().order('created_at', ascending: false);
+      setState(() {
+        _turmas = List<Map<String, dynamic>>.from(turRes);
+        _provas = List<Map<String, dynamic>>.from(proRes);
+      });
+    } catch (e) {
+      _showError('Erro ao carregar dados: $e');
+    } finally {
+      setState(() => _isLoading = false);
+    }
   }
 
   Future<void> _addProva() async {
-    if (_tituloController.text.isEmpty || _selectedTurmaId == null) return;
-    
-    setState(() => _isLoading = true);
+    if (_tituloController.text.isEmpty || _selectedTurmaId == null) {
+       _showError('Preencha o título e selecione uma turma');
+       return;
+    }
     try {
       await _supabase.from('provas').insert({
         'titulo': _tituloController.text,
@@ -40,18 +51,17 @@ class _ProvasPageState extends State<ProvasPage> {
       });
       _tituloController.clear();
       if (mounted) Navigator.pop(context);
+      _loadData();
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Erro ao adicionar: $e'), backgroundColor: Colors.red),
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
+      _showError('Erro ao adicionar: $e');
     }
   }
 
   void _showAddDialog() {
+    if (_turmas.isEmpty) {
+      _showError('Cadastre uma turma antes de criar provas!');
+      return;
+    }
     showDialog(
       context: context,
       builder: (context) => StatefulBuilder(
@@ -62,12 +72,12 @@ class _ProvasPageState extends State<ProvasPage> {
             children: [
               TextField(
                 controller: _tituloController,
-                decoration: const InputDecoration(labelText: 'Título da Prova'),
+                decoration: const InputDecoration(labelText: 'Título da Prova', border: OutlineInputBorder()),
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: 15),
               DropdownButtonFormField<int>(
                 value: _selectedTurmaId,
-                decoration: const InputDecoration(labelText: 'Turma'),
+                decoration: const InputDecoration(labelText: 'Turma', border: OutlineInputBorder()),
                 items: _turmas.map((t) => DropdownMenuItem<int>(
                   value: t['id'],
                   child: Text(t['nome']),
@@ -85,64 +95,82 @@ class _ProvasPageState extends State<ProvasPage> {
     );
   }
 
-  Stream<List<Map<String, dynamic>>> _fetchProvas() {
-    return _supabase.from('provas').stream(primaryKey: ['id']).order('created_at', ascending: false);
+  void _showError(String msg) {
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg), backgroundColor: Colors.red));
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: StreamBuilder<List<Map<String, dynamic>>>(
-        stream: _fetchProvas(),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          final provas = snapshot.data ?? [];
-          return ListView.builder(
-            itemCount: provas.length,
-            itemBuilder: (context, index) {
-              final prova = provas[index];
-              final turma = _turmas.firstWhere((t) => t['id'] == prova['turma_id'], orElse: () => {'nome': 'N/A'});
-              return Card(
-                margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                child: ListTile(
-                  title: Text(prova['titulo'], style: const TextStyle(fontWeight: FontWeight.bold)),
-                  subtitle: Text('Turma: ${turma['nome']}'),
-                  leading: const Icon(Icons.assignment, color: Colors.blueAccent),
-                  trailing: Row(
-                    mainAxisSize: MainAxisSize.min,
+      body: _isLoading 
+        ? const Center(child: CircularProgressIndicator())
+        : RefreshIndicator(
+            onRefresh: _loadData,
+            child: _provas.isEmpty 
+              ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      IconButton(
-                        icon: const Icon(Icons.list_alt, color: Colors.green),
-                        tooltip: 'Gerenciar Questões',
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => QuestoesPage(provaId: prova['id'], provaTitulo: prova['titulo']),
-                            ),
-                          );
-                        },
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.delete, color: Colors.red),
-                        onPressed: () async {
-                          await _supabase.from('provas').delete().eq('id', prova['id']);
-                        },
-                      ),
+                      const Icon(Icons.assignment_outlined, size: 80, color: Colors.grey),
+                      const SizedBox(height: 16),
+                      const Text('Nenhuma prova cadastrada', style: TextStyle(fontSize: 18, color: Colors.grey)),
+                      const SizedBox(height: 24),
+                      ElevatedButton.icon(
+                        onPressed: _showAddDialog, 
+                        icon: const Icon(Icons.add), 
+                        label: const Text('CADASTRAR PRIMEIRA PROVA'),
+                      )
                     ],
                   ),
+                )
+              : ListView.builder(
+                  padding: const EdgeInsets.all(8),
+                  itemCount: _provas.length,
+                  itemBuilder: (context, index) {
+                    final prova = _provas[index];
+                    final turma = _turmas.firstWhere((t) => t['id'] == prova['turma_id'], orElse: () => {'nome': 'N/A'});
+                    return Card(
+                      child: ListTile(
+                        leading: const CircleAvatar(backgroundColor: Colors.blueAccent, child: Icon(Icons.assignment, color: Colors.white)),
+                        title: Text(prova['titulo'], style: const TextStyle(fontWeight: FontWeight.bold)),
+                        subtitle: Text('Turma: ${turma['nome']}'),
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            IconButton(
+                              icon: const Icon(Icons.list_alt, color: Colors.green),
+                              tooltip: 'Gerenciar Questões',
+                              onPressed: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => QuestoesPage(provaId: prova['id'], provaTitulo: prova['titulo']),
+                                  ),
+                                ).then((_) => _loadData());
+                              },
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.delete, color: Colors.red),
+                              onPressed: () async {
+                                await _supabase.from('provas').delete().eq('id', prova['id']);
+                                _loadData();
+                              },
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
                 ),
-              );
-            },
-          );
-        },
-      ),
-      floatingActionButton: FloatingActionButton(
+          ),
+      floatingActionButton: FloatingActionButton.extended(
         onPressed: _showAddDialog,
-        child: const Icon(Icons.add),
+        label: const Text('NOVA PROVA'),
+        icon: const Icon(Icons.add),
+        backgroundColor: Colors.blueAccent,
+        foregroundColor: Colors.white,
       ),
     );
   }

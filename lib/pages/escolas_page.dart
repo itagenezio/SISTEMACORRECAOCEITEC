@@ -11,25 +11,38 @@ class EscolasPage extends StatefulWidget {
 class _EscolasPageState extends State<EscolasPage> {
   final _supabase = Supabase.instance.client;
   final _nomeController = TextEditingController();
-  bool _isLoading = false;
+  List<Map<String, dynamic>> _escolas = [];
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchEscolas();
+  }
+
+  Future<void> _fetchEscolas() async {
+    setState(() => _isLoading = true);
+    try {
+      final response = await _supabase.from('escolas').select().order('nome');
+      setState(() {
+        _escolas = List<Map<String, dynamic>>.from(response);
+      });
+    } catch (e) {
+      _showError('Erro ao carregar escolas: $e');
+    } finally {
+      setState(() => _isLoading = false);
+    }
+  }
 
   Future<void> _addEscola() async {
     if (_nomeController.text.isEmpty) return;
-    
-    setState(() => _isLoading = true);
     try {
       await _supabase.from('escolas').insert({'nome': _nomeController.text});
       _nomeController.clear();
       if (mounted) Navigator.pop(context);
       _fetchEscolas();
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Erro ao adicionar: $e'), backgroundColor: Colors.red),
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
+      _showError('Erro ao adicionar: $e');
     }
   }
 
@@ -40,7 +53,7 @@ class _EscolasPageState extends State<EscolasPage> {
         title: const Text('Nova Escola'),
         content: TextField(
           controller: _nomeController,
-          decoration: const InputDecoration(labelText: 'Nome da Escola'),
+          decoration: const InputDecoration(labelText: 'Nome da Escola', border: OutlineInputBorder()),
           autofocus: true,
         ),
         actions: [
@@ -51,50 +64,62 @@ class _EscolasPageState extends State<EscolasPage> {
     );
   }
 
-  Stream<List<Map<String, dynamic>>> _fetchEscolas() {
-    return _supabase.from('escolas').stream(primaryKey: ['id']).order('nome');
+  void _showError(String msg) {
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg), backgroundColor: Colors.red));
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: StreamBuilder<List<Map<String, dynamic>>>(
-        stream: _fetchEscolas(),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          if (snapshot.hasError) {
-            return Center(child: Text('Erro: ${snapshot.error}'));
-          }
-          final escolas = snapshot.data ?? [];
-          if (escolas.isEmpty) {
-            return const Center(child: Text('Nenhuma escola cadastrada.'));
-          }
-          return ListView.builder(
-            itemCount: escolas.length,
-            itemBuilder: (context, index) {
-              final escola = escolas[index];
-              return Card(
-                margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                child: ListTile(
-                  title: Text(escola['nome'], style: const TextStyle(fontWeight: FontWeight.bold)),
-                  leading: const Icon(Icons.school, color: Colors.blue),
-                  trailing: IconButton(
-                    icon: const Icon(Icons.delete, color: Colors.red),
-                    onPressed: () async {
-                      await _supabase.from('escolas').delete().eq('id', escola['id']);
-                    },
+      body: _isLoading 
+        ? const Center(child: CircularProgressIndicator())
+        : RefreshIndicator(
+            onRefresh: _fetchEscolas,
+            child: _escolas.isEmpty 
+              ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.school_outlined, size: 80, color: Colors.grey),
+                      const SizedBox(height: 16),
+                      const Text('Nenhuma escola cadastrada', style: TextStyle(fontSize: 18, color: Colors.grey)),
+                      const SizedBox(height: 24),
+                      ElevatedButton.icon(
+                        onPressed: _showAddDialog, 
+                        icon: const Icon(Icons.add), 
+                        label: const Text('CADASTRAR PRIMEIRA ESCOLA'),
+                        style: ElevatedButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12)),
+                      )
+                    ],
                   ),
+                )
+              : ListView.builder(
+                  padding: const EdgeInsets.all(8),
+                  itemCount: _escolas.length,
+                  itemBuilder: (context, index) {
+                    final escola = _escolas[index];
+                    return Card(
+                      child: ListTile(
+                        leading: const CircleAvatar(child: Icon(Icons.school)),
+                        title: Text(escola['nome'], style: const TextStyle(fontWeight: FontWeight.bold)),
+                        trailing: IconButton(
+                          icon: const Icon(Icons.delete, color: Colors.red),
+                          onPressed: () async {
+                            await _supabase.from('escolas').delete().eq('id', escola['id']);
+                            _fetchEscolas();
+                          },
+                        ),
+                      ),
+                    );
+                  },
                 ),
-              );
-            },
-          );
-        },
-      ),
-      floatingActionButton: FloatingActionButton(
+          ),
+      floatingActionButton: FloatingActionButton.extended(
         onPressed: _showAddDialog,
-        child: const Icon(Icons.add),
+        label: const Text('NOVA ESCOLA'),
+        icon: const Icon(Icons.add),
       ),
     );
   }
