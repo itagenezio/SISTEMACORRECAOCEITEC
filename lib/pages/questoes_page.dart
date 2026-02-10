@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class QuestoesPage extends StatefulWidget {
-  final int? provaId;
+  final String? provaId;
   final String? provaTitulo;
   
   const QuestoesPage({super.key, this.provaId, this.provaTitulo});

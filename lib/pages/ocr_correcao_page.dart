@@ -5,11 +5,10 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'grafico_pizza_page.dart';
 
 class OcrCorrecaoPage extends StatefulWidget {
-  final int? provaId;
-  final int? alunoId;
+  final String? provaId;
+  final String? alunoId;
   
   const OcrCorrecaoPage({super.key, this.provaId, this.alunoId});
 
@@ -32,13 +31,13 @@ class _OcrCorrecaoPageState extends State<OcrCorrecaoPage> {
   List<Map<String, dynamic>> _alunos = [];
   
   // Selection State
-  int? _selectedTurmaId;
-  int? _selectedProvaId;
-  int? _selectedAlunoId;
+  String? _selectedTurmaId;
+  String? _selectedProvaId;
+  String? _selectedAlunoId;
 
   // OCR Results State
   List<TextEditingController> _controllers = [];
-  List<int> _questoesIds = []; // IDs from DB
+  List<String> _questoesIds = []; // IDs from DB (UUID)
   bool _mostrarEditor = false;
 
   @override
@@ -51,7 +50,6 @@ class _OcrCorrecaoPageState extends State<OcrCorrecaoPage> {
     // If IDs provided, try to load context
     if (_selectedProvaId != null) {
       _fetchQuestoes(_selectedProvaId!);
-      // Could also try to reverse lookup turma...
     }
   }
 
@@ -66,7 +64,7 @@ class _OcrCorrecaoPageState extends State<OcrCorrecaoPage> {
     }
   }
 
-  Future<void> _fetchProvas(int turmaId) async {
+  Future<void> _fetchProvas(String turmaId) async {
     try {
       final response = await _supabase
           .from('provas')
@@ -85,7 +83,7 @@ class _OcrCorrecaoPageState extends State<OcrCorrecaoPage> {
     }
   }
 
-  Future<void> _fetchAlunos(int turmaId) async {
+  Future<void> _fetchAlunos(String turmaId) async {
     try {
       final response = await _supabase
           .from('alunos')
@@ -103,7 +101,7 @@ class _OcrCorrecaoPageState extends State<OcrCorrecaoPage> {
 
   List<String> _gabaritos = []; // Gabaritos from DB
 
-  Future<void> _fetchQuestoes(int provaId) async {
+  Future<void> _fetchQuestoes(String provaId) async {
     try {
       final response = await _supabase
           .from('questoes')
@@ -113,7 +111,7 @@ class _OcrCorrecaoPageState extends State<OcrCorrecaoPage> {
       
       final questoes = List<Map<String, dynamic>>.from(response);
       setState(() {
-        _questoesIds = questoes.map((q) => q['id'] as int).toList();
+        _questoesIds = questoes.map((q) => q['id'].toString()).toList();
         _gabaritos = questoes.map((q) => (q['gabarito'] ?? '').toString().toUpperCase()).toList();
         
         // Rebuild controllers list to match question count
@@ -339,15 +337,8 @@ class _OcrCorrecaoPageState extends State<OcrCorrecaoPage> {
                duration: const Duration(seconds: 3),
              )
            );
-           
-           // Optional: clear to scan next student?
-           // For now, redirect to stats
-           Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(
-               builder: (_) => GraficoPizzaPage(provaId: _selectedProvaId),
-            ),
-           );
+           // Apenas voltamos ou mostramos sucesso
+           Navigator.pop(context);
         }
       } else {
         _showError('Nenhuma resposta preenchida para salvar.');
@@ -390,11 +381,11 @@ class _OcrCorrecaoPageState extends State<OcrCorrecaoPage> {
                     const Text('1. Configuração', 
                       style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                     const SizedBox(height: 10),
-                    DropdownButtonFormField<int>(
+                    DropdownButtonFormField<String>(
                       value: _selectedTurmaId,
                       decoration: const InputDecoration(labelText: 'Turma', border: OutlineInputBorder()),
-                      items: _turmas.map((t) => DropdownMenuItem<int>(
-                        value: t['id'], 
+                      items: _turmas.map((t) => DropdownMenuItem<String>(
+                        value: t['id'].toString(), 
                         child: Text(t['nome'])
                       )).toList(),
                       onChanged: (val) {
@@ -415,11 +406,11 @@ class _OcrCorrecaoPageState extends State<OcrCorrecaoPage> {
                     Row(
                       children: [
                         Expanded(
-                          child: DropdownButtonFormField<int>(
+                          child: DropdownButtonFormField<String>(
                             value: _selectedProvaId,
                             decoration: const InputDecoration(labelText: 'Prova', border: OutlineInputBorder()),
-                            items: _provas.map((p) => DropdownMenuItem<int>(
-                              value: p['id'], 
+                            items: _provas.map((p) => DropdownMenuItem<String>(
+                              value: p['id'].toString(), 
                               child: Text(p['titulo'])
                             )).toList(),
                             onChanged: (val) {
@@ -431,7 +422,7 @@ class _OcrCorrecaoPageState extends State<OcrCorrecaoPage> {
                       ],
                     ),
                     const SizedBox(height: 10),
-                    DropdownButtonFormField<int>(
+                    DropdownButtonFormField<String>(
                       value: _selectedAlunoId,
                       decoration: const InputDecoration(
                         labelText: '3. Selecione o Aluno da Foto', 
@@ -439,8 +430,8 @@ class _OcrCorrecaoPageState extends State<OcrCorrecaoPage> {
                         prefixIcon: Icon(Icons.person),
                         fillColor: Colors.yellow, // Destaque visual
                       ),
-                      items: _alunos.map((a) => DropdownMenuItem<int>(
-                        value: a['id'], 
+                      items: _alunos.map((a) => DropdownMenuItem<String>(
+                        value: a['id'].toString(), 
                         child: Text(a['nome'])
                       )).toList(),
                       onChanged: (val) => setState(() => _selectedAlunoId = val),

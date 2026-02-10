@@ -1,10 +1,9 @@
  import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'grafico_pizza_page.dart';
 
 class CorrecaoEnvioPage extends StatefulWidget {
-  final int? provaId;
-  final int? alunoId;
+  final String? provaId;
+  final String? alunoId;
   const CorrecaoEnvioPage({super.key, this.provaId, this.alunoId});
 
   @override
@@ -13,7 +12,7 @@ class CorrecaoEnvioPage extends StatefulWidget {
 
 class _CorrecaoEnvioPageState extends State<CorrecaoEnvioPage> {
   late Future<List<Map<String, dynamic>>> _questoesFuture;
-  final Map<int, String> _respostas = {};
+  final Map<dynamic, String> _respostas = {};
 
   @override
   void initState() {
@@ -41,15 +40,14 @@ class _CorrecaoEnvioPageState extends State<CorrecaoEnvioPage> {
       }
 
       final supabase = Supabase.instance.client;
-      final questaoIds = questoes.map((q) => q['id'] as int).toList();
+      final questaoIds = questoes.map((q) => q['id'].toString()).toList();
 
       if (questaoIds.isNotEmpty) {
-        final idsString = '(${questaoIds.join(',')})';
         await supabase
             .from('respostas_alunos')
             .delete()
             .eq('aluno_id', widget.alunoId as Object)
-            .filter('questao_id', 'in', idsString);
+            .filter('questao_id', 'in', questaoIds);
       }
 
       for (var questao in questoes) {
@@ -70,12 +68,7 @@ class _CorrecaoEnvioPageState extends State<CorrecaoEnvioPage> {
 
       await Future.delayed(const Duration(seconds: 1));
       if (!mounted) return;
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => GraficoPizzaPage(provaId: widget.provaId),
-        ),
-      );
+      Navigator.pop(context);
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(

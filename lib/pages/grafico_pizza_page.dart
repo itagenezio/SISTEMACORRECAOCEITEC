@@ -3,7 +3,7 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class GraficoPizzaPage extends StatefulWidget {
-  final int? provaId;
+  final String? provaId;
   
   const GraficoPizzaPage({super.key, this.provaId});
 
@@ -36,8 +36,8 @@ class _GraficoPizzaPageState extends State<GraficoPizzaPage> {
           .select('id, gabarito')
           .eq('prova_id', widget.provaId!);
       
-      final Map<int, String> gabaritos = {
-        for (var q in questoesResp) q['id'] as int: (q['gabarito'] ?? '').toString().toUpperCase()
+      final Map<dynamic, String> gabaritos = {
+        for (var q in questoesResp) q['id']: (q['gabarito'] ?? '').toString().toUpperCase()
       };
       
       final totalQuestoes = gabaritos.length;
@@ -53,12 +53,12 @@ class _GraficoPizzaPageState extends State<GraficoPizzaPage> {
           .inFilter('questao_id', gabaritos.keys.toList());
 
       // 3. Group by student and count correct answers
-      Map<int, int> studentCorrectCount = {};
-      Set<int> allStudents = {};
+      Map<dynamic, int> studentCorrectCount = {};
+      Set<dynamic> allStudents = {};
 
       for (var r in respostasResp) {
-        int alunoId = r['aluno_id'];
-        int questaoId = r['questao_id'];
+        dynamic alunoId = r['aluno_id'];
+        dynamic questaoId = r['questao_id'];
         String resp = (r['resposta_aluno'] ?? '').toString().toUpperCase();
         
         allStudents.add(alunoId);

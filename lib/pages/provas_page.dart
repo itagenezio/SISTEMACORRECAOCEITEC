@@ -12,7 +12,7 @@ class ProvasPage extends StatefulWidget {
 class _ProvasPageState extends State<ProvasPage> {
   final _supabase = Supabase.instance.client;
   final _tituloController = TextEditingController();
-  int? _selectedTurmaId;
+  String? _selectedTurmaId;
   List<Map<String, dynamic>> _provas = [];
   List<Map<String, dynamic>> _turmas = [];
   bool _isLoading = true;
@@ -75,11 +75,11 @@ class _ProvasPageState extends State<ProvasPage> {
                 decoration: const InputDecoration(labelText: 'Título da Prova', border: OutlineInputBorder()),
               ),
               const SizedBox(height: 15),
-              DropdownButtonFormField<int>(
+              DropdownButtonFormField<String>(
                 value: _selectedTurmaId,
                 decoration: const InputDecoration(labelText: 'Turma', border: OutlineInputBorder()),
-                items: _turmas.map((t) => DropdownMenuItem<int>(
-                  value: t['id'],
+                items: _turmas.map((t) => DropdownMenuItem<String>(
+                  value: t['id'].toString(),
                   child: Text(t['nome']),
                 )).toList(),
                 onChanged: (val) => setDialogState(() => _selectedTurmaId = val),
@@ -130,7 +130,7 @@ class _ProvasPageState extends State<ProvasPage> {
                   itemCount: _provas.length,
                   itemBuilder: (context, index) {
                     final prova = _provas[index];
-                    final turma = _turmas.firstWhere((t) => t['id'] == prova['turma_id'], orElse: () => {'nome': 'N/A'});
+                    final turma = _turmas.firstWhere((t) => t['id'].toString() == prova['turma_id'].toString(), orElse: () => {'nome': 'N/A'});
                     return Card(
                       child: ListTile(
                         leading: const CircleAvatar(backgroundColor: Colors.blueAccent, child: Icon(Icons.assignment, color: Colors.white)),
@@ -146,7 +146,7 @@ class _ProvasPageState extends State<ProvasPage> {
                                 Navigator.push(
                                   context,
                                   MaterialPageRoute(
-                                    builder: (context) => QuestoesPage(provaId: prova['id'], provaTitulo: prova['titulo']),
+                                    builder: (context) => QuestoesPage(provaId: prova['id'].toString(), provaTitulo: prova['titulo']),
                                   ),
                                 ).then((_) => _loadData());
                               },

@@ -11,7 +11,7 @@ class TurmasPage extends StatefulWidget {
 class _TurmasPageState extends State<TurmasPage> {
   final _supabase = Supabase.instance.client;
   final _nomeController = TextEditingController();
-  int? _selectedEscolaId;
+  String? _selectedEscolaId;
   List<Map<String, dynamic>> _turmas = [];
   List<Map<String, dynamic>> _escolas = [];
   bool _isLoading = true;
@@ -74,11 +74,11 @@ class _TurmasPageState extends State<TurmasPage> {
                 decoration: const InputDecoration(labelText: 'Nome da Turma', border: OutlineInputBorder()),
               ),
               const SizedBox(height: 15),
-              DropdownButtonFormField<int>(
+              DropdownButtonFormField<String>(
                 value: _selectedEscolaId,
                 decoration: const InputDecoration(labelText: 'Escola Responsável', border: OutlineInputBorder()),
-                items: _escolas.map((e) => DropdownMenuItem<int>(
-                  value: e['id'],
+                items: _escolas.map((e) => DropdownMenuItem<String>(
+                  value: e['id'].toString(),
                   child: Text(e['nome']),
                 )).toList(),
                 onChanged: (val) => setDialogState(() => _selectedEscolaId = val),

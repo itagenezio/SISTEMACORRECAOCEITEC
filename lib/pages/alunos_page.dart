@@ -12,7 +12,7 @@ class _AlunosPageState extends State<AlunosPage> {
   final _supabase = Supabase.instance.client;
   final _nomeController = TextEditingController();
   final _matriculaController = TextEditingController();
-  int? _selectedTurmaId;
+  String? _selectedTurmaId;
   List<Map<String, dynamic>> _alunos = [];
   List<Map<String, dynamic>> _turmas = [];
   bool _isLoading = true;
@@ -82,11 +82,11 @@ class _AlunosPageState extends State<AlunosPage> {
                 decoration: const InputDecoration(labelText: 'Nº Matrícula (Opcional)', border: OutlineInputBorder()),
               ),
               const SizedBox(height: 15),
-              DropdownButtonFormField<int>(
+              DropdownButtonFormField<String>(
                 value: _selectedTurmaId,
                 decoration: const InputDecoration(labelText: 'Turma', border: OutlineInputBorder()),
-                items: _turmas.map((t) => DropdownMenuItem<int>(
-                  value: t['id'],
+                items: _turmas.map((t) => DropdownMenuItem<String>(
+                  value: t['id'].toString(),
                   child: Text(t['nome']),
                 )).toList(),
                 onChanged: (val) => setDialogState(() => _selectedTurmaId = val),

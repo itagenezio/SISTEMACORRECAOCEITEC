@@ -75,8 +75,8 @@ class DashboardPage extends StatelessWidget {
                             context,
                             MaterialPageRoute(
                               builder: (context) => const OcrCorrecaoPage(
-                                provaId: 1, // ID de exemplo
-                                alunoId: 1, // ID de exemplo
+                                provaId: 'demo-prova', // ID de exemplo como String
+                                alunoId: 'demo-aluno', // ID de exemplo como String
                               ),
                             ),
                           );
