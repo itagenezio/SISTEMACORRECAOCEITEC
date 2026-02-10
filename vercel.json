@@ -1,5 +1,5 @@
 {
-  "outputDirectory": "build/web",
+  "outputDirectory": "public",
   "trailingSlash": true,
   "rewrites": [
     {
