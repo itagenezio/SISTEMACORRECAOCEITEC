@@ -137,11 +137,12 @@ class _OcrCorrecaoPageState extends State<OcrCorrecaoPage> {
   }
 
   Future<void> _pickImage(ImageSource source) async {
-    if (kIsWeb || (defaultTargetPlatform == TargetPlatform.windows || defaultTargetPlatform == TargetPlatform.linux || defaultTargetPlatform == TargetPlatform.macOS)) {
+    // Apenas desktop nativo (Windows/Mac) usa o Mock sem abrir a camera
+    if (!kIsWeb && (defaultTargetPlatform == TargetPlatform.windows || defaultTargetPlatform == TargetPlatform.linux || defaultTargetPlatform == TargetPlatform.macOS)) {
        setState(() {
          _image = XFile('mock_image'); 
-         _imageBytes = Uint8List(0); // Dummy bytes
-         _statusMessage = '[MOCK] Imagem simulada (Web/Desktop). Clique em Processar.';
+         _imageBytes = Uint8List(0);
+         _statusMessage = '[MOCK] Imagem simulada (Desktop). Clique em Processar.';
          _statusColor = Colors.blue;
        });
        return;
@@ -161,8 +162,27 @@ class _OcrCorrecaoPageState extends State<OcrCorrecaoPage> {
   }
 
   Future<void> _processarImagem() async {
-    // MOCK FOR DESKTOP OCR - Avoid ML Kit UnimplementedError
-    if (kIsWeb || (defaultTargetPlatform == TargetPlatform.windows || defaultTargetPlatform == TargetPlatform.linux || defaultTargetPlatform == TargetPlatform.macOS)) {
+    // Na Web (iPhone via Browser), usamos Simulação pois o Google ML Kit não suporta navegador
+    if (kIsWeb) {
+       setState(() {
+          _processando = true;
+          _statusMessage = 'Simulando análise OCR (Versão Web)...';
+       });
+       await Future.delayed(const Duration(seconds: 2));
+       setState(() {
+          for(int i=0; i<_controllers.length; i++) {
+             _controllers[i].text = ['A','B','C','D','E'][i % 5];
+          }
+          _processando = false;
+          _mostrarEditor = true;
+          _statusMessage = 'Análise concluída (Simulada para Web).';
+          _statusColor = Colors.green;
+       });
+       return;
+    }
+
+    // Mock apenas para Desktop Nativo
+    if (defaultTargetPlatform == TargetPlatform.windows || defaultTargetPlatform == TargetPlatform.linux || defaultTargetPlatform == TargetPlatform.macOS) {
        setState(() {
           _processando = true;
           _statusMessage = '[MOCK] Simulando OCR...';
