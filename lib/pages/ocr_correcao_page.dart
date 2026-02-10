@@ -307,6 +307,8 @@ class _OcrCorrecaoPageState extends State<OcrCorrecaoPage> {
       final List<Map<String, dynamic>> upsertData = [];
       int count = 0;
       
+      // Buscamos o nome do aluno para confirmar no log/sucesso
+      final alunoNome = _alunos.firstWhere((a) => a['id'] == _selectedAlunoId)['nome'];
       for (int i = 0; i < _questoesIds.length; i++) {
         String resp = _controllers[i].text.trim().toUpperCase();
         if (resp.isNotEmpty) {
@@ -331,7 +333,11 @@ class _OcrCorrecaoPageState extends State<OcrCorrecaoPage> {
         
         if (mounted) {
            ScaffoldMessenger.of(context).showSnackBar(
-             SnackBar(content: Text('Sucesso! $count respostas salvas.'), backgroundColor: Colors.green)
+             SnackBar(
+               content: Text('Sucesso! Nota de $alunoNome salva na Turma selecionada.'), 
+               backgroundColor: Colors.green,
+               duration: const Duration(seconds: 3),
+             )
            );
            
            // Optional: clear to scan next student?
@@ -427,7 +433,12 @@ class _OcrCorrecaoPageState extends State<OcrCorrecaoPage> {
                     const SizedBox(height: 10),
                     DropdownButtonFormField<int>(
                       value: _selectedAlunoId,
-                      decoration: const InputDecoration(labelText: 'Aluno', border: OutlineInputBorder()),
+                      decoration: const InputDecoration(
+                        labelText: '3. Selecione o Aluno da Foto', 
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.person),
+                        fillColor: Colors.yellow, // Destaque visual
+                      ),
                       items: _alunos.map((a) => DropdownMenuItem<int>(
                         value: a['id'], 
                         child: Text(a['nome'])
