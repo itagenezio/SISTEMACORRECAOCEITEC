@@ -1,5 +1,5 @@
 import 'package:flutter/foundation.dart';
-import 'dart:io' as io; // Safe to import in Flutter Web if not used at runtime
+// No dart:io here to keep compiler happy
 
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
@@ -19,7 +19,8 @@ class OcrCorrecaoPage extends StatefulWidget {
 
 class _OcrCorrecaoPageState extends State<OcrCorrecaoPage> {
   final _supabase = Supabase.instance.client;
-  dynamic _image; // Use dynamic to avoid File/XFile type conflict on Web
+  XFile? _image; 
+  Uint8List? _imageBytes; // For cross-platform display
 
   String _statusMessage = '';
   Color _statusColor = Colors.blue;
@@ -138,9 +139,9 @@ class _OcrCorrecaoPageState extends State<OcrCorrecaoPage> {
   Future<void> _pickImage(ImageSource source) async {
     if (kIsWeb || (defaultTargetPlatform == TargetPlatform.windows || defaultTargetPlatform == TargetPlatform.linux || defaultTargetPlatform == TargetPlatform.macOS)) {
        setState(() {
-         // Use a dummy string for image identifier on web/desktop mock
-         _image = 'mock_image'; 
-         _statusMessage = '[MOCK] Imagem simulada. Clique em Processar.';
+         _image = XFile('mock_image'); 
+         _imageBytes = Uint8List(0); // Dummy bytes
+         _statusMessage = '[MOCK] Imagem simulada (Web/Desktop). Clique em Processar.';
          _statusColor = Colors.blue;
        });
        return;
@@ -149,13 +150,10 @@ class _OcrCorrecaoPageState extends State<OcrCorrecaoPage> {
     final ImagePicker picker = ImagePicker();
     final XFile? image = await picker.pickImage(source: source);
     if (image != null) {
+      final bytes = await image.readAsBytes();
       setState(() {
-        if (kIsWeb) {
-          _image = image; 
-        } else {
-          // Use dynamic to trick the web compiler into not checking the 'io.File' constructor arguments
-          _image = (io.File as dynamic)(image.path);
-        }
+        _image = image;
+        _imageBytes = bytes;
         _statusMessage = 'Imagem carregada. Clique em Processar.';
         _statusColor = Colors.blue;
       });
@@ -205,9 +203,9 @@ class _OcrCorrecaoPageState extends State<OcrCorrecaoPage> {
     });
 
     try {
-      // Use dynamic to call ML Kit methods to prevent web compiler from failing
-      final dynamic file = _image;
-      final dynamic inputImage = (InputImage as dynamic).fromFile(file);
+      // Use fromFilePath to avoid creating io.File object directly in a way the compiler checks
+      final String path = _image!.path;
+      final dynamic inputImage = (InputImage as dynamic).fromFilePath(path);
       
       final dynamic textRecognizer = TextRecognizer(script: TextRecognitionScript.latin);
       final RecognizedText recognizedText = await textRecognizer.processImage(inputImage);
@@ -448,11 +446,9 @@ class _OcrCorrecaoPageState extends State<OcrCorrecaoPage> {
                           child: _image != null
                                   ? ClipRRect(
                                       borderRadius: BorderRadius.circular(8),
-                                      child: kIsWeb 
-                                          ? Image.network((_image as XFile).path, fit: BoxFit.cover)
-                                          : (_image is String) 
-                                              ? const Icon(Icons.image, size: 50) 
-                                              : Image.file(_image as dynamic, fit: BoxFit.cover),
+                                      child: _imageBytes != null && _imageBytes!.isNotEmpty
+                                          ? Image.memory(_imageBytes!, fit: BoxFit.cover)
+                                          : const Icon(Icons.image, size: 50, color: Colors.blueGrey),
                                     )
                               : Column(
                                   mainAxisAlignment: MainAxisAlignment.center,
