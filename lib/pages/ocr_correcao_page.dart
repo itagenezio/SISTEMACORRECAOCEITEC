@@ -171,12 +171,12 @@ class _OcrCorrecaoPageState extends State<OcrCorrecaoPage> {
        await Future.delayed(const Duration(seconds: 2));
        setState(() {
           for(int i=0; i<_controllers.length; i++) {
-             _controllers[i].text = ['A','B','C','D','E'][i % 5];
+             _controllers[i].text = ''; // Deixa em branco para o professor preencher olhando a foto
           }
           _processando = false;
           _mostrarEditor = true;
-          _statusMessage = 'Análise concluída (Simulada para Web).';
-          _statusColor = Colors.green;
+          _statusMessage = 'OCR Simulado. Agora preencha as respostas acima olhando para a foto capturada.';
+          _statusColor = Colors.blue;
        });
        return;
     }
@@ -537,9 +537,51 @@ class _OcrCorrecaoPageState extends State<OcrCorrecaoPage> {
                     children: [
                       const Text('3. Conferência e Ajustes', 
                         style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                      const Text('Verifique se as respostas foram lidas corretamente:',
+                      const Text('Preencha as respostas do aluno baseado na foto acima:',
                          style: TextStyle(color: Colors.grey)),
                       const SizedBox(height: 15),
+                      
+                      // Contador de acertos em tempo real
+                      Builder(builder: (context) {
+                        int acertos = 0;
+                        int preenchidas = 0;
+                        for (int i = 0; i < _controllers.length; i++) {
+                          if (_controllers[i].text.isNotEmpty) {
+                            preenchidas++;
+                            if (_controllers[i].text.toUpperCase() == _gabaritos[i]) {
+                              acertos++;
+                            }
+                          }
+                        }
+                        double percentual = _gabaritos.isEmpty ? 0 : (acertos / _gabaritos.length) * 100;
+                        
+                        return Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.blue[50],
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: Colors.blue[200]!),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceAround,
+                            children: [
+                              Column(
+                                children: [
+                                  const Text('ACERTOS', style: TextStyle(fontSize: 12, color: Colors.blueGrey)),
+                                  Text('$acertos/${_gabaritos.length}', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.blue)),
+                                ],
+                              ),
+                              Column(
+                                children: [
+                                  const Text('NOTA', style: TextStyle(fontSize: 12, color: Colors.blueGrey)),
+                                  Text('${percentual.toStringAsFixed(1)}%', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: percentual >= 60 ? Colors.green : Colors.orange)),
+                                ],
+                              ),
+                            ],
+                          ),
+                        );
+                      }),
+                      const SizedBox(height: 20),
                       
                       ListView.separated(
                         shrinkWrap: true,
