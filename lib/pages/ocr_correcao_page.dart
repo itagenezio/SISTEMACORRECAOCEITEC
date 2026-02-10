@@ -326,9 +326,8 @@ class _OcrCorrecaoPageState extends State<OcrCorrecaoPage> {
       }
 
       if (upsertData.isNotEmpty) {
-        await _supabase.from('respostas_alunos').upsert(
-          upsertData, onConflict: 'aluno_id,questao_id'
-        );
+        // Removemos o 'onConflict' que estava causando o erro no banco de dados
+        await _supabase.from('respostas_alunos').upsert(upsertData);
         
         if (mounted) {
            ScaffoldMessenger.of(context).showSnackBar(
