@@ -34,7 +34,23 @@ try {
     }
 
     // Renomeia a pasta para 'public'
-    fs.renameSync(source, dest);
+    if (fs.existsSync(source)) {
+        fs.renameSync(source, dest);
+        console.log('Arquivos movidos para public com sucesso!');
+
+        // Listar arquivos para debug
+        try {
+            const files = fs.readdirSync(dest);
+            console.log('Conteúdo de public:', files);
+            if (!files.includes('index.html')) {
+                throw new Error('index.html não encontrado em public!');
+            }
+        } catch (e) {
+            console.error('Erro ao listar public:', e);
+        }
+    } else {
+        throw new Error('Pasta build/web não encontrada após o build!');
+    }
 
     console.log('--- Build concluído com sucesso! Pasta: public ---');
 } catch (error) {
