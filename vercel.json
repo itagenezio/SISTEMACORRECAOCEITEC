@@ -1,10 +1,10 @@
 {
   "outputDirectory": "public",
   "trailingSlash": true,
-  "rewrites": [
+  "routes": [
     {
-      "source": "/(.*)",
-      "destination": "/index.html"
+      "src": "/(.*)",
+      "dest": "/index.html"
     }
   ],
   "framework": null,
