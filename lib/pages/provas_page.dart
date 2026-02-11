@@ -32,10 +32,16 @@ class _ProvasPageState extends State<ProvasPage> {
         _turmas = List<Map<String, dynamic>>.from(turRes);
         _provas = List<Map<String, dynamic>>.from(proRes);
       });
+    } on PostgrestException catch (e) {
+      if (e.code == 'PGRST205' || e.message.contains('Could not find the table')) {
+        _showError('ERRO: Tabela necessária não encontrada. Execute o script SETUP_DB.sql no Supabase.');
+      } else {
+        _showError('Erro no banco: ${e.message}');
+      }
     } catch (e) {
-      _showError('Erro ao carregar dados: $e');
+      _showError('Erro inesperado: $e');
     } finally {
-      setState(() => _isLoading = false);
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 

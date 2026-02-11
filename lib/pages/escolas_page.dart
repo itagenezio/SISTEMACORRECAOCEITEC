@@ -27,10 +27,16 @@ class _EscolasPageState extends State<EscolasPage> {
       setState(() {
         _escolas = List<Map<String, dynamic>>.from(response);
       });
+    } on PostgrestException catch (e) {
+      if (e.code == 'PGRST205' || e.message.contains('Could not find the table')) {
+        _showError('ERRO: Tabela "escolas" não encontrada. Execute o script SETUP_DB.sql no Supabase.');
+      } else {
+        _showError('Erro ao carregar escolas: ${e.message}');
+      }
     } catch (e) {
-      _showError('Erro ao carregar escolas: $e');
+      _showError('Erro inesperado: $e');
     } finally {
-      setState(() => _isLoading = false);
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
