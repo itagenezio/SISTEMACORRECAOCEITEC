@@ -1,0 +1,5 @@
+0b55f91 Fix: Rename output folder to dist to match Vercel Vite preset
+8d08d80 Fix: Change rewrites to routes in vercel.json for static serving
+c550a7e Fix: Deploy pre-built files to public/ to bypass Vercel build issues
+9fa9836 Fix: Force framework null and improve build caching
+7b41fc1 Fix: Hardcode base href for Vercel deployment

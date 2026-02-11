@@ -1,0 +1,10 @@
+0b55f91 Fix: Rename output folder to dist to match Vercel Vite preset
+8d08d80 Fix: Change rewrites to routes in vercel.json for static serving
+c550a7e Fix: Deploy pre-built files to public/ to bypass Vercel build issues
+9fa9836 Fix: Force framework null and improve build caching
+7b41fc1 Fix: Hardcode base href for Vercel deployment
+72433a5 Bump version to 1.0.0+2 to force rebuild
+5d0ae20 Fix: Remove chaves duplicadas que quebravam o build
+dc5dffb Fix: Correção de erro de sintaxe no OCR e melhoria no modo demo
+3fd3ec4 Fix: Web build failure by abstracting OCR service with conditional imports
+0f732e8 Fix: Unificação de IDs UUID e correção de tipos para integração Inovatec

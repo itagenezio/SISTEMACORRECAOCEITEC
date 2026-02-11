@@ -1,0 +1,20 @@
+* 0b55f91 Fix: Rename output folder to dist to match Vercel Vite preset
+* 8d08d80 Fix: Change rewrites to routes in vercel.json for static serving
+* c550a7e Fix: Deploy pre-built files to public/ to bypass Vercel build issues
+* 9fa9836 Fix: Force framework null and improve build caching
+* 7b41fc1 Fix: Hardcode base href for Vercel deployment
+* 72433a5 Bump version to 1.0.0+2 to force rebuild
+* 5d0ae20 Fix: Remove chaves duplicadas que quebravam o build
+* dc5dffb Fix: Correção de erro de sintaxe no OCR e melhoria no modo demo
+* 3fd3ec4 Fix: Web build failure by abstracting OCR service with conditional imports
+* 0f732e8 Fix: Unificação de IDs UUID e correção de tipos para integração Inovatec
+* 5a43886 UX: Melhorando seleção de aluno e confirmação de salvamento por turma
+* e2624f2 UI: Adicionando contador de acertos e nota em tempo real
+* cf9a356 Fix: Removendo erro de constraint no salvamento das respostas
+* 44118d5 Fix: Ativando câmera no iPhone Web e fluxo de OCR
+* 3a65360 Fix: Script de build inteligente e pasta public
+* c6a1a93 Fix: Reescrita final web-safe e pasta padrão build/web
+* 22a0aed Fix: Build web final com pasta de saída correta
+* 1a1c9ee Fix: Correção final de tipos e compilação para Web
+* 0d8bee7 Fix: Build inline no package.json para evitar erro 127
+* bcb82bc Fix: Build script robusto para Vercel
