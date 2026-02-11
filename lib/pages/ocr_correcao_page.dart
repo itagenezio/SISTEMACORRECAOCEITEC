@@ -3,7 +3,7 @@ import 'package:flutter/foundation.dart';
 
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
+import 'package:sistema_correcao_final/services/ocr_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class OcrCorrecaoPage extends StatefulWidget {
@@ -49,6 +49,11 @@ class _OcrCorrecaoPageState extends State<OcrCorrecaoPage> {
     
     // If IDs provided, try to load context
     if (_selectedProvaId != null) {
+      if (_selectedProvaId == 'demo-prova') {
+         // Mock data for dropdowns to prevent crash
+         _provas = [{'id': 'demo-prova', 'titulo': 'Prova Demo'}];
+         _alunos = [{'id': 'demo-aluno', 'nome': 'Aluno Demo'}];
+      }
       _fetchQuestoes(_selectedProvaId!);
     }
   }
@@ -102,6 +107,17 @@ class _OcrCorrecaoPageState extends State<OcrCorrecaoPage> {
   List<String> _gabaritos = []; // Gabaritos from DB
 
   Future<void> _fetchQuestoes(String provaId) async {
+    // Modo Demo: Simular questões para teste rápido sem bater no banco
+    if (provaId == 'demo-prova' || (kIsWeb && provaId.startsWith('demo-'))) {
+       setState(() {
+         // Cria 5 questões de exemplo
+         _questoesIds = ['mock-1', 'mock-2', 'mock-3', 'mock-4', 'mock-5'];
+         _gabaritos = ['A', 'B', 'C', 'D', 'E'];
+         _controllers = List.generate(5, (_) => TextEditingController());
+       });
+       return;
+    }
+
     try {
       final response = await _supabase
           .from('questoes')
@@ -159,13 +175,20 @@ class _OcrCorrecaoPageState extends State<OcrCorrecaoPage> {
     }
   }
 
+    }
+  }
+
+  // --- INÍCIO DA LÓGICA ABSTRAÍDA ---
+  
   Future<void> _processarImagem() async {
+    
     // Na Web (iPhone via Browser), usamos Simulação pois o Google ML Kit não suporta navegador
     if (kIsWeb) {
        setState(() {
           _processando = true;
           _statusMessage = 'Simulando análise OCR (Versão Web)...';
        });
+       // A simulação agora acontece dentro do serviço web, mas mantemos a UI aqui
        await Future.delayed(const Duration(seconds: 2));
        setState(() {
           for(int i=0; i<_controllers.length; i++) {
@@ -173,28 +196,8 @@ class _OcrCorrecaoPageState extends State<OcrCorrecaoPage> {
           }
           _processando = false;
           _mostrarEditor = true;
-          _statusMessage = 'OCR Simulado. Agora preencha as respostas acima olhando para a foto capturada.';
+          _statusMessage = 'OCR Simulado (Web). Preencha as respostas manuais.';
           _statusColor = Colors.blue;
-       });
-       return;
-    }
-
-    // Mock apenas para Desktop Nativo
-    if (defaultTargetPlatform == TargetPlatform.windows || defaultTargetPlatform == TargetPlatform.linux || defaultTargetPlatform == TargetPlatform.macOS) {
-       setState(() {
-          _processando = true;
-          _statusMessage = '[MOCK] Simulando OCR...';
-       });
-       await Future.delayed(const Duration(seconds: 1));
-       setState(() {
-          for(int i=0; i<_controllers.length; i++) {
-             // Loop through A-E for demo
-             _controllers[i].text = ['A','B','C','D','E'][i % 5];
-          }
-          _processando = false;
-          _mostrarEditor = true;
-          _statusMessage = '[MOCK] Resultados simulados gerados.';
-          _statusColor = Colors.green;
        });
        return;
     }
@@ -221,18 +224,12 @@ class _OcrCorrecaoPageState extends State<OcrCorrecaoPage> {
     });
 
     try {
-      // Use fromFilePath to avoid creating io.File object directly in a way the compiler checks
-      final String path = _image!.path;
-      final dynamic inputImage = (InputImage as dynamic).fromFilePath(path);
-      
-      final dynamic textRecognizer = TextRecognizer(script: TextRecognitionScript.latin);
-      final RecognizedText recognizedText = await textRecognizer.processImage(inputImage);
-      
-      await textRecognizer.close();
+      // Usa o serviço abstraído (Mobile = Real, Web = Mock)
+      final ocrService = OcrService();
+      final String fullText = (await ocrService.recognizeText(_image!.path)).toUpperCase();
 
       // Heuristic: Extract all A-E characters found
       List<String> foundAnswers = [];
-      String fullText = recognizedText.text.toUpperCase();
       
       // 1. Try to find pattern like "1. A", "1-B", "1 C"
       final lines = fullText.split('\n');
@@ -246,8 +243,6 @@ class _OcrCorrecaoPageState extends State<OcrCorrecaoPage> {
            if (num != null) answersByNum[num] = m.group(2)!;
          }
       }
-
-      // Use the already declared foundAnswers
 
       if (answersByNum.isNotEmpty) {
          var sortedKeys = answersByNum.keys.toList()..sort();
@@ -297,6 +292,18 @@ class _OcrCorrecaoPageState extends State<OcrCorrecaoPage> {
     if (_selectedAlunoId == null || _selectedProvaId == null) {
       _showError('Selecione Aluno e Prova.');
       return;
+    }
+
+    // Modo Demo: Simular salvamento
+    if (_selectedProvaId == 'demo-prova' || (_selectedAlunoId?.startsWith('demo-') ?? false)) {
+        ScaffoldMessenger.of(context).showSnackBar(
+             const SnackBar(
+               content: Text('Sucesso! (Modo Demo - Nada foi salvo no banco)'), 
+               backgroundColor: Colors.blue,
+             )
+        );
+        if (mounted) Navigator.pop(context);
+        return;
     }
 
     setState(() => _processando = true);
