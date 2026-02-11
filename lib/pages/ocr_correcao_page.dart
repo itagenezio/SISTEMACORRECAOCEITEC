@@ -175,8 +175,6 @@ class _OcrCorrecaoPageState extends State<OcrCorrecaoPage> {
     }
   }
 
-    }
-  }
 
   // --- INÍCIO DA LÓGICA ABSTRAÍDA ---
   
